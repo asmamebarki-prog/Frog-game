@@ -143,6 +143,29 @@ export const GameOverModal: React.FC<GameOverModalProps> = ({
         </button>
 
         <button
+          onClick={() => {
+            import('../standaloneHtml').then(({ generateStandaloneHtml }) => {
+              const htmlStr = generateStandaloneHtml(quiz);
+              const blob = new Blob([htmlStr], { type: 'text/html;charset=utf-8' });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
+              const safeName = (quiz.title.trim() || 'froggy_jumps').replace(/[^a-zA-Z0-9\u0600-\u06FF]/g, '_');
+              a.download = `${safeName}.html`;
+              document.body.appendChild(a);
+              a.click();
+              document.body.removeChild(a);
+              URL.revokeObjectURL(url);
+            });
+          }}
+          className="bg-slate-800 hover:bg-slate-700 text-amber-300 border border-amber-400/40 font-bold px-4 py-3 rounded-2xl transition flex items-center gap-2 text-sm sm:text-base cursor-pointer"
+          title="تحميل اللعبة كاملة كملف HTML مستقل"
+        >
+          <span>📥</span>
+          <span>تحميل كـ HTML</span>
+        </button>
+
+        <button
           onClick={handleShare}
           className="bg-white/20 hover:bg-white/30 text-white font-bold px-4 py-3 rounded-2xl transition flex items-center gap-2 text-sm sm:text-base cursor-pointer"
           title="مشاركة النتيجة"

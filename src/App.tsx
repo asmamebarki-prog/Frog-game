@@ -252,8 +252,29 @@ export default function App() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isEditorOpen, isAnswered, isGameOver, handleNextQuestion]);
 
+  // Handle downloading standalone HTML file
+  const handleDownloadHtml = () => {
+    sound.playClick();
+    import('./standaloneHtml').then(({ generateStandaloneHtml }) => {
+      const htmlStr = generateStandaloneHtml(currentQuiz);
+      const blob = new Blob([htmlStr], { type: 'text/html;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      const safeName = (currentQuiz.title.trim() || 'froggy_jumps').replace(/[^a-zA-Z0-9\u0600-\u06FF]/g, '_');
+      a.download = `${safeName}.html`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    });
+  };
+
   const currentQ = currentQuiz.questions[currentQuestionIdx];
-  const progressPercent = Math.min(100, Math.round(((currentQuestionIdx + (isAnswered ? 1 : 0.5)) / Math.max(1, currentQuiz.questions.length)) * 100));
+  const progressPercent = Math.min(
+    100,
+    Math.round(((currentQuestionIdx + (isAnswered ? 1 : 0.5)) / Math.max(1, currentQuiz.questions.length)) * 100)
+  );
 
   return (
     <div className="sky-gradient min-h-screen flex flex-col relative text-slate-800 antialiased selection:bg-emerald-500 selection:text-white">
@@ -278,6 +299,28 @@ export default function App() {
         </div>
 
         <div className="flex items-center gap-2">
+          {/* Open / Download HTML file options */}
+          <button
+            onClick={handleDownloadHtml}
+            className="bg-emerald-600/90 hover:bg-emerald-500 text-white font-bold px-3 py-2 rounded-xl text-xs sm:text-sm flex items-center gap-1.5 border border-emerald-400/50 shadow transition cursor-pointer"
+            title="تحميل اللعبة كملف HTML مستقل يمكن فتحه وتشغيله على أي جهاز بدون إنترنت"
+          >
+            <span>📥</span>
+            <span className="hidden sm:inline">تحميل كملف HTML</span>
+            <span className="sm:hidden">ملف HTML</span>
+          </button>
+
+          <a
+            href="/froggy_jumps.html"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="bg-white/15 hover:bg-white/25 text-white font-medium px-2.5 py-2 rounded-xl text-xs sm:text-sm flex items-center gap-1 border border-white/20 transition"
+            title="فتح صفحة HTML المستقلة مباشرة في المتصفح"
+          >
+            <span>🌐</span>
+            <span className="hidden md:inline">فتح كـ HTML</span>
+          </a>
+
           {/* Sound Toggle */}
           <button
             onClick={handleToggleSound}
@@ -289,7 +332,7 @@ export default function App() {
             title={isMuted ? "تشغيل الصوت" : "كتم الصوت"}
           >
             {isMuted ? <VolumeX className="w-4 h-4 text-rose-400" /> : <Volume2 className="w-4 h-4 text-amber-300" />}
-            <span className="hidden md:inline">{isMuted ? "الصوت مغلق" : "الصوت"}</span>
+            <span className="hidden lg:inline">{isMuted ? "الصوت مغلق" : "الصوت"}</span>
           </button>
 
           {/* Teacher Mode / Fast Editor */}
@@ -301,7 +344,8 @@ export default function App() {
             className="bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-slate-950 font-black px-3.5 py-2 rounded-xl text-xs sm:text-sm flex items-center gap-2 shadow-lg transition transform hover:-translate-y-0.5 cursor-pointer"
           >
             <PenSquare className="w-4 h-4 text-slate-950" />
-            <span>محرر الأسئلة السريع 📝</span>
+            <span className="hidden sm:inline">محرر الأسئلة 📝</span>
+            <span className="sm:hidden">الأسئلة 📝</span>
           </button>
         </div>
       </header>

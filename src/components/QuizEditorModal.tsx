@@ -223,16 +223,50 @@ export const QuizEditorModal: React.FC<QuizEditorModalProps> = ({
             <span>استعادة الأسئلة الافتراضية</span>
           </button>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Download Standalone HTML */}
+            <button
+              onClick={() => {
+                const validQuestions = parsePipeFormat(pipeText);
+                if (validQuestions.length === 0) {
+                  setFeedbackError("يرجى إدخال سؤال واحد صحيح على الأقل أولاً!");
+                  return;
+                }
+                const quizToExport: QuizData = {
+                  title: title.trim() || "تحدي Froggy Jump",
+                  category: category.trim() || "عام",
+                  questions: validQuestions
+                };
+                import('../standaloneHtml').then(({ generateStandaloneHtml }) => {
+                  const htmlStr = generateStandaloneHtml(quizToExport);
+                  const blob = new Blob([htmlStr], { type: 'text/html;charset=utf-8' });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = url;
+                  const safeName = (title.trim() || 'froggy_jumps').replace(/[^a-zA-Z0-9\u0600-\u06FF]/g, '_');
+                  a.download = `${safeName}.html`;
+                  document.body.appendChild(a);
+                  a.click();
+                  document.body.removeChild(a);
+                  URL.revokeObjectURL(url);
+                });
+              }}
+              className="bg-slate-800 hover:bg-slate-700 text-amber-300 border border-amber-400/40 font-bold px-3.5 py-2.5 rounded-xl text-xs sm:text-sm shadow transition flex items-center gap-1.5 cursor-pointer"
+              title="تحميل اللعبة كملف HTML مستقل يمكن تشغيله على أي جهاز بدون إنترنت"
+            >
+              <span>📥</span>
+              <span>تحميل كملف HTML</span>
+            </button>
+
             <button
               onClick={onClose}
-              className="px-4 py-2.5 rounded-xl text-sm font-semibold text-slate-300 hover:bg-slate-800 transition"
+              className="px-3.5 py-2.5 rounded-xl text-xs sm:text-sm font-semibold text-slate-300 hover:bg-slate-800 transition"
             >
               إلغاء
             </button>
             <button
               onClick={handleSave}
-              className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-black px-7 py-2.5 rounded-xl text-sm shadow-xl transition flex items-center gap-2 cursor-pointer"
+              className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-black px-6 py-2.5 rounded-xl text-xs sm:text-sm shadow-xl transition flex items-center gap-2 cursor-pointer"
             >
               <Sparkles className="w-4 h-4 text-slate-950" />
               <span>حفظ وابدأ اللعب 🎮</span>
