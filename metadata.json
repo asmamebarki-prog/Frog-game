@@ -1,0 +1,6 @@
+{
+  "name": "Froggy Jumps - لعبة قفزات الضفدع",
+  "description": "لعبة تعليمية تفاعلية ممتعة يقفز فيها الضفدع بين أوراق الزنبق المائية عند الإجابة الصحيحة مع محرر سريع للأسئلة ومؤثرات حركية وصوتية.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -1,0 +1,731 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Froggy Jumps - لعبة قفزات الضفدع التعليمية</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;600;800;900&display=swap" rel="stylesheet">
+    <!-- Tone.js for Sound FX -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+
+    <style>
+        * {
+            font-family: 'Tajawal', sans-serif;
+            user-select: none;
+        }
+
+        body {
+            background: linear-gradient(180deg, #fdba74 0%, #f97316 20%, #38bdf8 50%, #0284c7 100%);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* Pond & Nature Environment */
+        .pond-bg {
+            background: radial-gradient(circle at 50% 40%, #0284c7 0%, #0369a1 60%, #075985 100%);
+            box-shadow: inset 0 10px 30px rgba(0,0,0,0.3);
+        }
+
+        /* Floating Animation for Water Lily Pads */
+        .floating-pad {
+            animation: floatLily 3.5s ease-in-out infinite alternate;
+        }
+
+        @keyframes floatLily {
+            0% { transform: translateY(0px) rotate(-1deg); }
+            100% { transform: translateY(-6px) rotate(1deg); }
+        }
+
+        /* Frog Animation States */
+        .frog-idle {
+            animation: frogBreathe 2s ease-in-out infinite alternate;
+        }
+
+        @keyframes frogBreathe {
+            0% { transform: scale(1); }
+            100% { transform: scale(1.05, 0.95); }
+        }
+
+        /* Dynamic Jump Curve */
+        .frog-jumping {
+            transition: all 0.6s cubic-bezier(0.25, 1.2, 0.5, 1.2) !important;
+        }
+
+        .frog-splash {
+            animation: frogSplashDown 0.6s ease-in forwards;
+        }
+
+        @keyframes frogSplashDown {
+            0% { transform: translateY(0) scale(1); opacity: 1; }
+            50% { transform: translateY(30px) scale(0.8); opacity: 0.8; }
+            100% { transform: translateY(80px) scale(0.2); opacity: 0; }
+        }
+
+        /* Custom Glassmorphic Cards */
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.18);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            border: 2px solid rgba(255, 255, 255, 0.35);
+            box-shadow: 0 15px 35px rgba(0,0,0,0.25);
+        }
+
+        .option-card {
+            transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+            background: rgba(255, 255, 255, 0.92);
+        }
+
+        .option-card:hover:not(:disabled) {
+            transform: translateY(-4px) scale(1.02);
+            background: #ffffff;
+            box-shadow: 0 10px 25px rgba(16, 185, 129, 0.3);
+        }
+
+        /* Custom Scrollbar for Editor Modal */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(0,0,0,0.1);
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #10b981;
+            border-radius: 10px;
+        }
+    </style>
+</head>
+<body class="flex flex-col min-h-screen relative overflow-x-hidden text-slate-800">
+
+    <!-- Fireflies / Glowing Particles -->
+    <div class="firefly top-12 right-20"></div>
+    <div class="firefly top-1/3 left-16" style="animation-delay: -2s;"></div>
+    <div class="firefly top-2/3 right-1/3" style="animation-delay: -4s;"></div>
+
+    <!-- Navigation Header -->
+    <header class="w-full px-4 py-3 bg-slate-900/40 backdrop-blur-md border-b border-white/20 relative z-30 flex justify-between items-center text-white">
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-2xl bg-emerald-500 flex items-center justify-center text-2xl shadow-lg border border-emerald-300">
+                🐸
+            </div>
+            <div>
+                <h1 class="text-xl font-extrabold tracking-wide text-amber-300 drop-shadow">FROGGY JUMP</h1>
+                <p class="text-xs text-emerald-100 font-medium">لعبة قفزات الضفدع التعليمية التفاعلية</p>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-2">
+            <!-- Sound Toggle -->
+            <button id="sound-toggle-btn" class="bg-white/20 hover:bg-white/30 px-3 py-2 rounded-xl text-sm font-semibold flex items-center gap-2 transition">
+                <i class="fa-solid fa-volume-high text-amber-300" id="sound-icon"></i>
+                <span class="hidden sm:inline">الصوت</span>
+            </button>
+            
+            <!-- Quiz Builder / Teacher Mode Button -->
+            <button id="open-editor-btn" class="bg-amber-500 hover:bg-amber-600 text-slate-900 font-bold px-4 py-2 rounded-xl text-sm flex items-center gap-2 shadow-lg transition">
+                <i class="fa-solid fa-pen-to-square"></i>
+                <span>محرر الأسئلة السريع</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Game Container -->
+    <main class="flex-1 flex flex-col items-center justify-between p-3 md:p-6 max-w-5xl mx-auto w-full relative z-10">
+
+        <!-- Top Progress & Score Board -->
+        <div id="game-stats-bar" class="w-full glass-panel rounded-2xl p-4 mb-4 flex flex-wrap justify-between items-center gap-3 text-white">
+            <!-- Stage Progress -->
+            <div class="flex items-center gap-3">
+                <span id="level-badge" class="bg-emerald-600/80 px-3 py-1 rounded-xl text-xs font-bold border border-emerald-300">
+                    المرحلة 1 من 5
+                </span>
+                <div class="w-32 sm:w-48 bg-slate-900/50 rounded-full h-3 overflow-hidden p-0.5 border border-white/20">
+                    <div id="progress-bar-fill" class="bg-gradient-to-r from-amber-400 to-emerald-400 h-full rounded-full transition-all duration-500" style="width: 20%"></div>
+                </div>
+            </div>
+
+            <!-- Quiz Title Indicator -->
+            <div id="quiz-title-display" class="font-extrabold text-amber-200 text-sm md:text-base">
+                اختبار تفاعلي
+            </div>
+
+            <!-- Score counter -->
+            <div class="flex items-center gap-2 bg-slate-900/60 px-4 py-1.5 rounded-xl border border-amber-400/30">
+                <i class="fa-solid fa-star text-amber-400 text-lg"></i>
+                <span class="text-xs text-slate-200">النقاط:</span>
+                <span id="score-text" class="text-lg font-black text-amber-300">0</span>
+            </div>
+        </div>
+
+        <!-- Visual Pond Animation Stage -->
+        <div id="pond-stage" class="w-full h-56 sm:h-64 pond-bg rounded-3xl relative overflow-hidden border-4 border-amber-200/40 shadow-2xl mb-4">
+            
+            <!-- Water Waves Overlay -->
+            <div class="absolute inset-0 opacity-20 pointer-events-none bg-[radial-gradient(#fff_1px,transparent_1px)] [background-size:16px_16px]"></div>
+
+            <!-- Start Shore (Right Side in RTL) -->
+            <div class="absolute right-0 bottom-0 w-20 sm:w-28 h-20 bg-emerald-800 rounded-tl-full border-t-4 border-emerald-500 flex items-center justify-center z-10 shadow-lg">
+                <span class="text-[10px] sm:text-xs text-emerald-200 font-bold -rotate-6">البداية 🌿</span>
+            </div>
+
+            <!-- Destination Shore (Left Side in RTL) -->
+            <div class="absolute left-0 bottom-0 w-24 sm:w-32 h-24 bg-emerald-700 rounded-tr-full border-t-4 border-emerald-400 flex flex-col items-center justify-center z-10 shadow-lg">
+                <span class="text-[10px] sm:text-xs text-amber-300 font-bold">الضفة الذهبية 🏆</span>
+                <span class="text-xl mt-1">🌸</span>
+            </div>
+
+            <!-- Lily Pads Dynamic Track Container -->
+            <div id="pads-container" class="w-full h-full relative z-20">
+                <!-- Dynamically populated lily pads -->
+            </div>
+
+            <!-- Frog Character Element -->
+            <div id="frog-character" class="w-14 h-14 sm:w-18 sm:h-18 absolute bottom-8 z-30 frog-idle frog-jumping" style="right: 5%; transform: translate(50%, 0);">
+                <!-- SVG Frog Illustration -->
+                <svg viewBox="0 0 100 100" class="w-full h-full drop-shadow-xl">
+                    <!-- Legs -->
+                    <ellipse cx="25" cy="70" rx="18" ry="10" fill="#15803d" transform="rotate(-20 25 70)"/>
+                    <ellipse cx="75" cy="70" rx="18" ry="10" fill="#15803d" transform="rotate(20 75 70)"/>
+                    <ellipse cx="20" cy="76" rx="12" ry="5" fill="#4ade80"/>
+                    <ellipse cx="80" cy="76" rx="12" ry="5" fill="#4ade80"/>
+                    <!-- Body -->
+                    <ellipse cx="50" cy="60" rx="32" ry="26" fill="#22c55e"/>
+                    <ellipse cx="50" cy="65" rx="22" ry="18" fill="#86efac"/>
+                    <!-- Big Eyes -->
+                    <circle cx="35" cy="32" r="14" fill="#22c55e"/>
+                    <circle cx="65" cy="32" r="14" fill="#22c55e"/>
+                    <circle cx="35" cy="32" r="10" fill="#ffffff"/>
+                    <circle cx="65" cy="32" r="10" fill="#ffffff"/>
+                    <circle cx="38" cy="32" r="5" fill="#0f172a"/>
+                    <circle cx="68" cy="32" r="5" fill="#0f172a"/>
+                    <circle cx="40" cy="30" r="2" fill="#ffffff"/>
+                    <circle cx="70" cy="30" r="2" fill="#ffffff"/>
+                    <!-- Cheeks & Smile -->
+                    <circle cx="28" cy="55" r="4" fill="#f43f5e" opacity="0.6"/>
+                    <circle cx="72" cy="55" r="4" fill="#f43f5e" opacity="0.6"/>
+                    <path d="M 40 58 Q 50 68 60 58" stroke="#0f172a" stroke-width="3" fill="none" stroke-linecap="round"/>
+                </svg>
+            </div>
+
+        </div>
+
+        <!-- Question Card Box -->
+        <div id="quiz-card-panel" class="w-full glass-panel rounded-3xl p-5 md:p-8 relative z-20 transition-all duration-300">
+            <!-- Question Category/Badge & Prompt -->
+            <div class="mb-5">
+                <div class="flex items-center justify-between mb-2">
+                    <span id="question-category" class="text-xs font-bold px-3 py-1 bg-amber-400 text-slate-900 rounded-full shadow">
+                        الصف العاشر / أسئلة عامة
+                    </span>
+                    <span id="hint-tag" class="text-xs text-white/90 font-medium">اختر الورقة الصحيحة ليقفز الضفدع إليها! 🐸</span>
+                </div>
+                <h2 id="question-text" class="text-xl md:text-2xl font-black text-white leading-relaxed drop-shadow">
+                    جاري تحميل السؤال...
+                </h2>
+            </div>
+
+            <!-- Options Grid (Multiple Choice) -->
+            <div id="options-grid" class="grid grid-cols-1 md:grid-cols-3 gap-3.5 mb-4">
+                <!-- Options injected dynamically by JS -->
+            </div>
+
+            <!-- Instant Feedback Alert Box -->
+            <div id="feedback-alert" class="hidden p-4 rounded-2xl mb-2 text-sm md:text-base font-bold flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <i id="feedback-icon" class="text-2xl"></i>
+                    <span id="feedback-message-text"></span>
+                </div>
+                <button id="next-question-btn" class="bg-slate-900 text-white hover:bg-black px-5 py-2 rounded-xl text-sm font-bold shadow transition flex items-center gap-2">
+                    <span>السؤال التالي</span>
+                    <i class="fa-solid fa-arrow-left"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Game Victory / Finish Overlay Card -->
+        <div id="game-over-panel" class="hidden w-full glass-panel rounded-3xl p-8 text-center text-white relative z-20 my-auto">
+            <div class="w-24 h-24 bg-amber-400/30 rounded-full flex items-center justify-center mx-auto mb-4 border-2 border-amber-300 animate-bounce">
+                <span class="text-6xl">🐸</span>
+            </div>
+            <h2 id="result-title" class="text-3xl font-black mb-2 text-amber-300 drop-shadow">مبروك! وصلت للضفة الأخرى بنجاح!</h2>
+            <p id="result-subtitle" class="text-slate-100 max-w-md mx-auto mb-6 text-sm md:text-base">
+                أكملت قفزات الضفدع عبر أوراق الزنبق المائية بإتقان ونجاح!
+            </p>
+
+            <div class="bg-slate-900/60 p-5 rounded-2xl border border-white/10 max-w-xs mx-auto mb-6">
+                <div class="flex justify-between items-center mb-2">
+                    <span class="text-slate-300 text-sm">الإجابات الصحيحة:</span>
+                    <span id="final-correct-count" class="font-bold text-emerald-400 text-lg">0 / 0</span>
+                </div>
+                <div class="flex justify-between items-center">
+                    <span class="text-slate-300 text-sm">مجموع النقاط:</span>
+                    <span id="final-score-val" class="font-bold text-amber-400 text-xl">0</span>
+                </div>
+            </div>
+
+            <div class="flex flex-wrap justify-center gap-4">
+                <button id="restart-game-btn" class="bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-black px-8 py-3.5 rounded-2xl shadow-xl transition transform hover:-translate-y-1 flex items-center gap-2">
+                    <i class="fa-solid fa-rotate-right"></i>
+                    <span>إعادة اللعب</span>
+                </button>
+                <button id="open-editor-from-end" class="bg-amber-400 hover:bg-amber-500 text-slate-950 font-black px-6 py-3.5 rounded-2xl shadow-xl transition">
+                    تعديل الأسئلة 📝
+                </button>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Quiz Builder / Teacher Editor Modal -->
+    <div id="editor-modal" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md hidden flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-700 w-full max-w-3xl rounded-3xl p-6 text-slate-100 max-h-[90vh] flex flex-col shadow-2xl">
+            
+            <!-- Modal Header -->
+            <div class="flex justify-between items-center pb-4 mb-4 border-b border-slate-800">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400">
+                        <i class="fa-solid fa-sliders text-xl"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-bold text-white">محرر الأسئلة الموحد (Fast Pipe Format)</h3>
+                        <p class="text-xs text-slate-400">أدخل الأسئلة والخيارات والإجابة في سطر واحد بكل سهولة</p>
+                    </div>
+                </div>
+                <button id="close-editor-btn" class="text-slate-400 hover:text-white p-2 rounded-lg text-xl">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <!-- Modal Content Body -->
+            <div class="flex-1 overflow-y-auto space-y-5 pl-1">
+                <!-- Quiz Meta Info -->
+                <div class="bg-slate-800/60 p-4 rounded-2xl border border-slate-700/50 grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-300 mb-1">عنوان الاختبار / المادة:</label>
+                        <input type="text" id="quiz-title-input" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-sm text-white focus:outline-none focus:border-emerald-500" placeholder="مثال: رياضيات - الصف العاشر">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-300 mb-1">الفئة / المفهوم:</label>
+                        <input type="text" id="quiz-category-input" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-sm text-white focus:outline-none focus:border-emerald-500" placeholder="مثال: الحساب والمعدلات">
+                    </div>
+                </div>
+
+                <!-- Bulk Input Format Box -->
+                <div class="bg-slate-950 p-4 rounded-2xl border border-amber-500/30 space-y-2">
+                    <div class="flex justify-between items-center">
+                        <label class="text-xs font-bold text-amber-300 flex items-center gap-2">
+                            <i class="fa-solid fa-bolt"></i> إدخال الأسئلة الموحد (سطر لكل سؤال):
+                        </label>
+                        <span class="text-[11px] text-slate-400">الصيغة: <code class="bg-slate-800 px-1.5 py-0.5 rounded text-amber-300">السؤال | الخيار 1 | الخيار 2 | الخيار 3 | رقم الصحيحة</code></span>
+                    </div>
+                    
+                    <p class="text-xs text-slate-400 dir-ltr font-mono bg-slate-900 p-2 rounded-xl border border-slate-800">
+                        مثال: What is 2+2? | 3 | 4 | 5 | 2
+                    </p>
+
+                    <textarea id="bulk-questions-text" rows="8" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-sm text-slate-100 font-sans focus:outline-none focus:border-emerald-500 leading-relaxed" placeholder="السؤال الأول | خيار أ | خيار ب | خيار ج | 1&#10;السؤال الثاني | خيار أ | خيار ب | خيار ج | 2"></textarea>
+                </div>
+            </div>
+
+            <!-- Modal Footer Controls -->
+            <div class="pt-4 mt-4 border-t border-slate-800 flex justify-between items-center">
+                <button id="reset-default-quiz-btn" class="text-xs text-rose-400 hover:underline">
+                    استعادة الأسئلة الافتراضية
+                </button>
+                <button id="save-quiz-btn" class="bg-gradient-to-r from-emerald-500 to-teal-500 text-slate-950 font-black px-8 py-3 rounded-xl text-sm shadow-lg hover:from-emerald-400 hover:to-teal-400 transition">
+                    حفظ وابدأ اللعب 🎮
+                </button>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        /* ==========================================================================
+           DEFAULT QUIZ DATA
+           ========================================================================== */
+        const defaultQuiz = {
+            title: "تحدي Froggy Jump - الصف العاشر",
+            category: "أسئلة متنوعة",
+            questions: [
+                {
+                    question: "What is 2+2?",
+                    options: ["3", "4", "5"],
+                    correct: 1
+                },
+                {
+                    question: "ما هي القوة التي تجذب الأجسام نحو مركز الأرض؟",
+                    options: ["القوة المغناطيسية", "قوة الجاذبية الأرضية", "قوة الاحتكاك"],
+                    correct: 1
+                },
+                {
+                    question: "أي العضيات التالية تُعرف بمصنع الطاقة في الخلية؟",
+                    options: ["النواة", "المايتوكندريا", "جهاز جولجي"],
+                    correct: 1
+                },
+                {
+                    question: "حل المعادلة التالية: 2x + 6 = 14 يُعطي قيمة x تساوي:",
+                    options: ["x = 3", "x = 5", "x = 4"],
+                    correct: 2
+                },
+                {
+                    question: "ما هو الرمز الكيميائي لعنصر الصوديوم؟",
+                    options: ["Na", "So", "K"],
+                    correct: 0
+                }
+            ]
+        };
+
+        // --- State Variables ---
+        let currentQuiz = JSON.parse(localStorage.getItem('froggy_custom_quiz_pipe')) || defaultQuiz;
+        let currentQuestionIdx = 0;
+        let score = 0;
+        let correctAnswersCount = 0;
+        let answered = false;
+        let soundEnabled = true;
+
+        // --- Sound Audio FX ---
+        let synth, polySynth;
+
+        function initAudio() {
+            if (!synth) {
+                synth = new Tone.Synth().toDestination();
+                polySynth = new Tone.PolySynth().toDestination();
+            }
+            if (Tone.context.state !== 'running') {
+                Tone.start();
+            }
+        }
+
+        function playSound(type) {
+            if (!soundEnabled) return;
+            try {
+                initAudio();
+                const now = Tone.now();
+                if (type === 'jump') {
+                    synth.triggerAttackRelease("C5", "16n", now);
+                    synth.triggerAttackRelease("G5", "16n", now + 0.08);
+                } else if (type === 'wrong') {
+                    synth.triggerAttackRelease("E2", "8n", now);
+                } else if (type === 'win') {
+                    polySynth.triggerAttackRelease(["C4", "E4", "G4", "C5"], "8n", now);
+                    polySynth.triggerAttackRelease(["G4", "B4", "D5", "G5"], "8n", now + 0.2);
+                }
+            } catch (e) {}
+        }
+
+        // --- DOM Elements ---
+        const frogChar = document.getElementById('frog-character');
+        const questionText = document.getElementById('question-text');
+        const optionsGrid = document.getElementById('options-grid');
+        const levelBadge = document.getElementById('level-badge');
+        const progressBarFill = document.getElementById('progress-bar-fill');
+        const scoreText = document.getElementById('score-text');
+        const quizTitleDisplay = document.getElementById('quiz-title-display');
+        const questionCategory = document.getElementById('question-category');
+        const padsContainer = document.getElementById('pads-container');
+        
+        const feedbackAlert = document.getElementById('feedback-alert');
+        const feedbackIcon = document.getElementById('feedback-icon');
+        const feedbackMsg = document.getElementById('feedback-message-text');
+        const nextQuestionBtn = document.getElementById('next-question-btn');
+
+        const quizCardPanel = document.getElementById('quiz-card-panel');
+        const gameOverPanel = document.getElementById('game-over-panel');
+
+        // --- Editor DOM Elements ---
+        const editorModal = document.getElementById('editor-modal');
+        const openEditorBtn = document.getElementById('open-editor-btn');
+        const closeEditorBtn = document.getElementById('close-editor-btn');
+        const quizTitleInput = document.getElementById('quiz-title-input');
+        const quizCategoryInput = document.getElementById('quiz-category-input');
+        const bulkQuestionsText = document.getElementById('bulk-questions-text');
+        const saveQuizBtn = document.getElementById('save-quiz-btn');
+        const resetDefaultQuizBtn = document.getElementById('reset-default-quiz-btn');
+
+        // Sound toggle
+        const soundToggleBtn = document.getElementById('sound-toggle-btn');
+        const soundIcon = document.getElementById('sound-icon');
+        soundToggleBtn.addEventListener('click', () => {
+            soundEnabled = !soundEnabled;
+            soundIcon.className = soundEnabled ? "fa-solid fa-volume-high text-amber-300" : "fa-solid fa-volume-xmark text-rose-400";
+        });
+
+        // --- Init Game & Build Track ---
+        function initGame() {
+            currentQuestionIdx = 0;
+            score = 0;
+            correctAnswersCount = 0;
+            scoreText.textContent = score;
+
+            quizTitleDisplay.textContent = currentQuiz.title || "اختبار تفاعلي";
+            questionCategory.textContent = currentQuiz.category || "عام";
+
+            quizCardPanel.classList.remove('hidden');
+            gameOverPanel.classList.add('hidden');
+
+            buildLilyPadsTrack();
+            loadQuestion();
+        }
+
+        // Create Lily Pads based on question count dynamically
+        function buildLilyPadsTrack() {
+            padsContainer.innerHTML = '';
+            const totalQ = currentQuiz.questions.length;
+            
+            // Distribute pads horizontally from right (start) to left (finish)
+            for (let i = 0; i < totalQ; i++) {
+                const pad = document.createElement('div');
+                pad.className = 'floating-pad absolute bottom-6 flex flex-col items-center';
+                
+                // Position calculation (RTL layout)
+                const rightPercent = 15 + (i * (70 / (totalQ - 1 || 1)));
+                pad.style.right = `${rightPercent}%`;
+                pad.style.animationDelay = `${-i * 0.7}s`;
+
+                pad.innerHTML = `
+                    <div class="w-16 sm:w-24 h-7 sm:h-9 bg-emerald-500 rounded-[50%] border-b-4 border-emerald-700 relative flex items-center justify-center shadow-lg">
+                        <div class="w-2.5 h-2.5 bg-pink-400 rounded-full glow-pink absolute -top-1"></div>
+                        <div class="w-full h-1 bg-emerald-400 opacity-40 rounded-full"></div>
+                        <span class="text-[10px] font-bold text-emerald-950 opacity-60 absolute -bottom-5">${i + 1}</span>
+                    </div>
+                `;
+                padsContainer.appendChild(pad);
+            }
+
+            // Set initial position of frog on starting shore
+            moveFrogToPosition(0, false);
+        }
+
+        function moveFrogToPosition(stepIndex, animate = true) {
+            const totalQ = currentQuiz.questions.length;
+            let targetRight = 5; // Start shore
+
+            if (stepIndex >= totalQ) {
+                targetRight = 88; // Gold finish shore
+            } else {
+                targetRight = 15 + (stepIndex * (70 / (totalQ - 1 || 1)));
+            }
+
+            frogChar.classList.remove('frog-splash');
+            
+            if (animate) {
+                frogChar.style.transform = `translate(50%, -40px) scale(1.15)`;
+                setTimeout(() => {
+                    frogChar.style.right = `${targetRight}%`;
+                    frogChar.style.transform = `translate(50%, 0) scale(1)`;
+                }, 150);
+            } else {
+                frogChar.style.right = `${targetRight}%`;
+                frogChar.style.transform = `translate(50%, 0) scale(1)`;
+            }
+        }
+
+        // --- Render Question ---
+        function loadQuestion() {
+            answered = false;
+            feedbackAlert.classList.add('hidden');
+
+            const qList = currentQuiz.questions;
+            if (currentQuestionIdx >= qList.length) {
+                showFinalResults();
+                return;
+            }
+
+            const qData = qList[currentQuestionIdx];
+
+            levelBadge.textContent = `المرحلة ${currentQuestionIdx + 1} من ${qList.length}`;
+            const progressPct = ((currentQuestionIdx + 1) / qList.length) * 100;
+            progressBarFill.style.width = `${progressPct}%`;
+
+            questionText.textContent = qData.question;
+
+            optionsGrid.innerHTML = '';
+            qData.options.forEach((optText, i) => {
+                const btn = document.createElement('button');
+                btn.className = `option-card p-4 rounded-2xl border-2 border-white/60 text-right text-slate-800 font-bold text-base md:text-lg flex items-center justify-between shadow-md`;
+                btn.innerHTML = `
+                    <div class="flex items-center gap-3">
+                        <span class="w-8 h-8 rounded-xl bg-emerald-500/20 text-emerald-800 flex items-center justify-center text-sm font-black border border-emerald-500/30">
+                            ${i === 0 ? 'أ' : i === 1 ? 'ب' : 'ج'}
+                        </span>
+                        <span>${optText}</span>
+                    </div>
+                    <i class="fa-regular fa-circle text-slate-400 status-icon"></i>
+                `;
+                btn.addEventListener('click', () => handleAnswerSelect(i, btn));
+                optionsGrid.appendChild(btn);
+            });
+        }
+
+        // --- Answer & Jump Handler ---
+        function handleAnswerSelect(selectedIdx, btnElement) {
+            if (answered) return;
+            answered = true;
+
+            const qData = currentQuiz.questions[currentQuestionIdx];
+            const allBtns = optionsGrid.querySelectorAll('.option-card');
+            allBtns.forEach(b => b.disabled = true);
+
+            if (selectedIdx === qData.correct) {
+                // Correct Choice
+                btnElement.classList.add('bg-emerald-100', 'border-emerald-500', 'text-emerald-900');
+                btnElement.querySelector('.status-icon').className = 'fa-solid fa-circle-check text-emerald-600 text-xl';
+
+                score += 100;
+                correctAnswersCount++;
+                scoreText.textContent = score;
+
+                // Move frog forward accurately to current pad
+                playSound('jump');
+                moveFrogToPosition(currentQuestionIdx, true);
+
+                showFeedback(true, "إجابة صحيحة! قفز الضفدع بنجاح إلى ورقة الزنبق التالية! 🐸✨");
+
+            } else {
+                // Wrong Choice
+                btnElement.classList.add('bg-rose-100', 'border-rose-500', 'text-rose-900');
+                btnElement.querySelector('.status-icon').className = 'fa-solid fa-circle-xmark text-rose-600 text-xl';
+
+                const correctBtn = allBtns[qData.correct];
+                correctBtn.classList.add('bg-emerald-100', 'border-emerald-500');
+                correctBtn.querySelector('.status-icon').className = 'fa-solid fa-circle-check text-emerald-600 text-xl';
+
+                playSound('wrong');
+                frogChar.classList.add('frog-splash');
+
+                showFeedback(false, `إجابة غير صحيحة! الإجابة الصحيحة هي: (${qData.options[qData.correct]})`);
+            }
+        }
+
+        function showFeedback(isCorrect, msg) {
+            feedbackAlert.classList.remove('hidden', 'bg-emerald-900/80', 'border-emerald-400', 'text-emerald-100', 'bg-rose-900/80', 'border-rose-400', 'text-rose-100');
+            
+            if (isCorrect) {
+                feedbackAlert.classList.add('bg-emerald-900/80', 'border-2', 'border-emerald-400', 'text-emerald-100');
+                feedbackIcon.className = 'fa-solid fa-circle-check text-emerald-400';
+            } else {
+                feedbackAlert.classList.add('bg-rose-900/80', 'border-2', 'border-rose-400', 'text-rose-100');
+                feedbackIcon.className = 'fa-solid fa-circle-xmark text-rose-400';
+            }
+
+            feedbackMsg.textContent = msg;
+        }
+
+        nextQuestionBtn.addEventListener('click', () => {
+            currentQuestionIdx++;
+            loadQuestion();
+        });
+
+        // --- Victory Screen ---
+        function showFinalResults() {
+            playSound('win');
+            moveFrogToPosition(currentQuiz.questions.length, true);
+            quizCardPanel.classList.add('hidden');
+            gameOverPanel.classList.remove('hidden');
+
+            document.getElementById('final-correct-count').textContent = `${correctAnswersCount} / ${currentQuiz.questions.length}`;
+            document.getElementById('final-score-val').textContent = score;
+        }
+
+        document.getElementById('restart-game-btn').addEventListener('click', initGame);
+        document.getElementById('open-editor-from-end').addEventListener('click', () => {
+            gameOverPanel.classList.add('hidden');
+            openEditorModal();
+        });
+
+        /* ==========================================================================
+           FAST PIPE FORMAT EDITOR LOGIC
+           ========================================================================== */
+        function openEditorModal() {
+            quizTitleInput.value = currentQuiz.title || "";
+            quizCategoryInput.value = currentQuiz.category || "";
+
+            // Format current questions into pipe lines
+            const lines = currentQuiz.questions.map(q => {
+                const correctNum = q.correct + 1; // 1-based index for user
+                return `${q.question} | ${q.options[0] || ''} | ${q.options[1] || ''} | ${q.options[2] || ''} | ${correctNum}`;
+            });
+
+            bulkQuestionsText.value = lines.join('\n');
+            editorModal.classList.remove('hidden');
+        }
+
+        function closeEditorModal() {
+            editorModal.classList.add('hidden');
+        }
+
+        openEditorBtn.addEventListener('click', openEditorModal);
+        closeEditorBtn.addEventListener('click', closeEditorModal);
+
+        // Save Editor Format
+        saveQuizBtn.addEventListener('click', () => {
+            const rawText = bulkQuestionsText.value.trim();
+            if (!rawText) {
+                alert("يرجى إدخال سؤال واحد على الأقل!");
+                return;
+            }
+
+            const lines = rawText.split('\n');
+            const parsedQuestions = [];
+
+            for (let line of lines) {
+                line = line.trim();
+                if (!line) continue;
+
+                const parts = line.split('|').map(p => p.trim());
+                if (parts.length >= 5) {
+                    const question = parts[0];
+                    const opt1 = parts[1];
+                    const opt2 = parts[2];
+                    const opt3 = parts[3];
+                    let correctVal = parseInt(parts[4]) - 1; // Convert to 0-based index
+
+                    if (isNaN(correctVal) || correctVal < 0 || correctVal > 2) {
+                        correctVal = 0;
+                    }
+
+                    parsedQuestions.push({
+                        question: question,
+                        options: [opt1, opt2, opt3],
+                        correct: correctVal
+                    });
+                }
+            }
+
+            if (parsedQuestions.length === 0) {
+                alert("صيغة الأسئلة غير صحيحة! استخدم الشارطة | بين السؤال والخيارات والإجابة الصحيحة.");
+                return;
+            }
+
+            currentQuiz.title = quizTitleInput.value.trim() || "اختبار مخصص";
+            currentQuiz.category = quizCategoryInput.value.trim() || "عام";
+            currentQuiz.questions = parsedQuestions;
+
+            localStorage.setItem('froggy_custom_quiz_pipe', JSON.stringify(currentQuiz));
+
+            closeEditorModal();
+            initGame();
+        });
+
+        // Reset
+        resetDefaultQuizBtn.addEventListener('click', () => {
+            if (confirm("هل تريد استعادة نموذج الأسئلة الافتراضي؟")) {
+                currentQuiz = JSON.parse(JSON.stringify(defaultQuiz));
+                localStorage.removeItem('froggy_custom_quiz_pipe');
+                openEditorModal();
+            }
+        });
+
+        // Initialize on load
+        window.onload = () => {
+            initGame();
+        };
+    </script>
+</body>
+</html>
